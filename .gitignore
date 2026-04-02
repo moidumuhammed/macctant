@@ -1,0 +1,5 @@
+node_modules
+**/node_modules
+backend/macctant.db
+.DS_Store
+dist
