@@ -1,77 +1,66 @@
 # Macctant (Modern Accountant)
 
-Macctant is a full-stack accounting app for a small cosmetics business selling **Lip Balm** and **Solid Perfume**. It is designed to be ultra-simple, mobile-friendly, and easy for non-accountants.
+Production-ready full-stack accounting app for a small cosmetics business.
 
-## Features
-
-- Simple login (`owner` / `1234` by default)
-- Dashboard with:
-  - Total sales
-  - Total expenses
-  - Profit/Loss auto-calculation
-  - Daily/weekly/monthly chart view
-- Sales entry with:
-  - Big product buttons with icons
-  - Auto-total
-  - Optional customer and phone
-  - **Quick Sale mode** (only quantity + price)
-  - Voice input support (browser speech recognition)
-- Expenses with category and auto-suggestions from frequent entries
-- Inventory tracking with low-stock alerts
-- Profit and loss calculations
-- Report downloads:
-  - PDF summary
-  - CSV export
-- Recent customer auto-fill
-
-## Tech Stack
-
-- Frontend: React + Vite + Tailwind CSS + Chart.js
+## Stack
+- Frontend: React + Vite + Tailwind + Lucide + Chart.js
 - Backend: Node.js + Express
 - Database: SQLite
 
-## Folder Structure
+## Project Structure
 
 ```txt
 macctant/
-├── backend/
-│   ├── db.js
-│   ├── server.js
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── package.json
-│   └── tailwind.config.js
-├── package.json
-└── README.md
+  backend/
+  frontend/
 ```
 
-## Run Locally
+## Default Login
+- username: `owner`
+- password: `macctant123`
 
-1. Install dependencies
+## Backend setup
 
 ```bash
-npm run install:all
+cd backend
+npm install
+npm start
 ```
 
-2. Start backend + frontend
+Server runs at `http://localhost:4000`.
+
+## Frontend setup
 
 ```bash
+cd frontend
+npm install
 npm run dev
 ```
 
-3. Open app
+App runs at `http://localhost:5173` and calls API at `http://localhost:4000`.
 
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:4000/api`
+## Implemented Features
+- JWT login + protected app shell
+- Dashboard: sales, expenses, profit/loss, daily sales chart, expense breakdown chart, recent transactions
+- Add Sale UI with big product buttons, auto total, optional customer/phone, save flow with toast
+- Full Sales management: list, edit, delete with confirmation
+- Expenses: add, list, delete
+- Inventory tracking for Lip Balm and Solid Perfume with low-stock warning
+- CSV export for sales
+- Dark mode toggle
+- Voice input button for sales entry (browser support dependent)
 
-## Default Login
+## REST API
+- `POST /api/login`
+- `GET /api/dashboard`
+- `POST /api/sales`
+- `GET /api/sales`
+- `PUT /api/sales/:id`
+- `DELETE /api/sales/:id`
+- `POST /api/expenses`
+- `GET /api/expenses`
+- `DELETE /api/expenses/:id`
 
-- Username: `owner`
-- Password: `1234`
-
-> You can change these in `backend/db.js`.
+Additional:
+- `GET /api/inventory`
+- `GET /api/export/sales-csv`

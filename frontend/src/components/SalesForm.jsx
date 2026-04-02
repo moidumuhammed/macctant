@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Sparkles, Droplet, Mic } from 'lucide-react';
 
 const products = [
@@ -6,7 +6,7 @@ const products = [
   { name: 'Solid Perfume', icon: Sparkles, color: 'bg-purple-100' }
 ];
 
-export default function SalesForm({ apiUrl, token, onSaved }) {
+export default function SalesForm({ apiUrl, token, onSaved, notify }) {
   const today = new Date().toISOString().slice(0, 10);
   const [product, setProduct] = useState('Lip Balm');
   const [quantity, setQuantity] = useState(1);
@@ -14,20 +14,12 @@ export default function SalesForm({ apiUrl, token, onSaved }) {
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [date, setDate] = useState(today);
-  const [message, setMessage] = useState('');
-  const [quickMode, setQuickMode] = useState(false);
-  const [customerOptions, setCustomerOptions] = useState([]);
-
-  useEffect(() => {
-    fetch(`${apiUrl}/recent-customers`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => res.json())
-      .then((rows) => setCustomerOptions(rows));
-  }, [apiUrl, token]);
+  const [loading, setLoading] = useState(false);
 
   const total = useMemo(() => Number(quantity || 0) * Number(price || 0), [quantity, price]);
 
   const saveSale = async () => {
-    setMessage('');
+    setLoading(true);
     const res = await fetch(`${apiUrl}/sales`, {
       method: 'POST',
       headers: {
@@ -35,7 +27,7 @@ export default function SalesForm({ apiUrl, token, onSaved }) {
         Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({
-        product_name: product,
+        product,
         quantity: Number(quantity),
         price: Number(price),
         customer_name: customerName,
@@ -43,19 +35,26 @@ export default function SalesForm({ apiUrl, token, onSaved }) {
         date
       })
     });
+
     const data = await res.json();
+    setLoading(false);
+
     if (!res.ok) {
-      setMessage(data.error || 'Could not save sale');
+      notify(data.error || 'Could not save sale', 'error');
       return;
     }
-    setMessage('✅ Sale saved!');
+
+    setQuantity(1);
+    setPrice(5);
+    setCustomerName('');
+    setPhone('');
     onSaved();
   };
 
   const startVoiceInput = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setMessage('Voice input is not supported in this browser.');
+      notify('Voice input not supported in this browser', 'error');
       return;
     }
 
@@ -65,25 +64,16 @@ export default function SalesForm({ apiUrl, token, onSaved }) {
       const text = event.results[0][0].transcript.toLowerCase();
       if (text.includes('lip')) setProduct('Lip Balm');
       if (text.includes('perfume')) setProduct('Solid Perfume');
-
-      const qtyMatch = text.match(/(\d+)\s*(piece|pcs|items|quantity)?/);
-      const priceMatch = text.match(/(\d+(\.\d+)?)\s*(dollar|usd|price)?/);
-      if (qtyMatch) setQuantity(Number(qtyMatch[1]));
-      if (priceMatch) setPrice(Number(priceMatch[1]));
-      setMessage(`🎤 Heard: "${text}"`);
+      const qty = text.match(/quantity\s*(\d+)|(\d+)\s*(piece|pieces|pcs)/);
+      if (qty) setQuantity(Number(qty[1] || qty[2]));
+      notify(`Voice captured: ${text}`);
     };
     recognition.start();
   };
 
   return (
-    <div className="rounded-2xl bg-white p-6 shadow space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Add Sale</h2>
-        <button onClick={() => setQuickMode((q) => !q)} className="rounded-xl bg-slate-900 px-4 py-2 text-white">
-          {quickMode ? 'Full Mode' : 'Quick Sale'}
-        </button>
-      </div>
-
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold">Add Sale</h2>
       <div className="grid gap-3 md:grid-cols-2">
         {products.map((p) => {
           const Icon = p.icon;
@@ -104,45 +94,59 @@ export default function SalesForm({ apiUrl, token, onSaved }) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="text-lg font-semibold">Quantity
-          <input className="mt-2 w-full rounded-xl border p-4 text-lg" type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+        <label className="text-lg font-semibold">
+          Quantity
+          <input
+            className="mt-2 w-full rounded-xl border p-4 text-lg"
+            type="number"
+            min="1"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+          />
         </label>
-        <label className="text-lg font-semibold">Price
-          <input className="mt-2 w-full rounded-xl border p-4 text-lg" type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
+        <label className="text-lg font-semibold">
+          Price
+          <input
+            className="mt-2 w-full rounded-xl border p-4 text-lg"
+            type="number"
+            min="0"
+            step="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
         </label>
       </div>
 
-      {!quickMode && (
-        <>
-          <datalist id="customers-list">
-            {customerOptions.map((c) => (
-              <option key={`${c.customer_name}-${c.phone}`} value={c.customer_name} />
-            ))}
-          </datalist>
-          <label className="block text-lg font-semibold">Customer Name (optional)
-            <input list="customers-list" className="mt-2 w-full rounded-xl border p-4 text-lg" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-          </label>
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="text-lg font-semibold">
+          Customer name (optional)
+          <input className="mt-2 w-full rounded-xl border p-4 text-lg" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+        </label>
+        <label className="text-lg font-semibold">
+          Phone (optional)
+          <input className="mt-2 w-full rounded-xl border p-4 text-lg" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </label>
+      </div>
 
-          <label className="block text-lg font-semibold">Phone Number (optional)
-            <input className="mt-2 w-full rounded-xl border p-4 text-lg" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </label>
+      <label className="block text-lg font-semibold">
+        Date
+        <input type="date" className="mt-2 w-full rounded-xl border p-4 text-lg" value={date} onChange={(e) => setDate(e.target.value)} />
+      </label>
 
-          <label className="block text-lg font-semibold">Date
-            <input type="date" className="mt-2 w-full rounded-xl border p-4 text-lg" value={date} onChange={(e) => setDate(e.target.value)} />
-          </label>
-        </>
-      )}
-
-      <div className="rounded-xl bg-pastelBlue p-4 text-xl font-bold">Total: ${total.toFixed(2)}</div>
+      <div className="rounded-xl bg-[#eadcca] p-4 text-xl font-bold">Total: ${total.toFixed(2)}</div>
 
       <div className="flex flex-wrap gap-3">
-        <button onClick={saveSale} className="rounded-xl bg-emerald-500 px-6 py-4 text-xl font-bold text-white">Save Sale</button>
+        <button
+          onClick={saveSale}
+          disabled={loading}
+          className="rounded-xl bg-emerald-500 px-6 py-4 text-xl font-bold text-white disabled:opacity-60"
+        >
+          {loading ? 'Saving...' : 'Save Sale'}
+        </button>
         <button onClick={startVoiceInput} className="flex items-center gap-2 rounded-xl bg-slate-200 px-6 py-4 text-lg font-semibold">
           <Mic size={20} /> Voice Input
         </button>
       </div>
-
-      {message && <p className="font-semibold text-slate-700">{message}</p>}
     </div>
   );
 }
